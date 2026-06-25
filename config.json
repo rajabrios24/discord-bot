@@ -1,0 +1,16 @@
+{
+  "roleButtons": [
+    {
+      "label": "Male",
+      "emoji": "♂️",
+      "roleId": "984467197063725067",
+      "style": "Primary"
+    },
+    {
+      "label": "Female",
+      "emoji": "♀️",
+      "roleId": "984467262989828106",
+      "style": "Secondary"
+    }
+  ]
+}
