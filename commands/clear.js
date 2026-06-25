@@ -21,14 +21,34 @@ module.exports = {
       return interaction.reply({ content: '❌ Bot tidak punya permission **Manage Messages**.', ephemeral: true });
     }
 
-    await interaction.deferReply({ ephemeral: true });
+    // Pastikan user yang jalankan command juga punya permission
+    if (!interaction.member.permissions.has(PermissionFlagsBits.ManageMessages)) {
+      return interaction.reply({ content: '❌ Kamu tidak punya permission **Manage Messages**.', ephemeral: true });
+    }
+
+    await interaction.deferReply();
 
     try {
+      // Parameter ke-2 (true) = filterOld, hanya hapus pesan < 14 hari
       const deleted = await interaction.channel.bulkDelete(amount, true);
-      await interaction.editReply(`✅ Berhasil menghapus **${deleted.size}** pesan.`);
+
+      const reply = await interaction.editReply(`🗑️ Berhasil menghapus **${deleted.size}** pesan.`);
+
+      // Hapus pesan konfirmasi setelah 5 detik
+      setTimeout(() => reply.delete().catch(() => {}), 5000);
     } catch (err) {
       console.error('[CLEAR] Error:', err);
-      await interaction.editReply('❌ Terjadi error saat menghapus pesan. Pastikan pesan tidak lebih dari 14 hari.');
+
+      let errorMsg = '❌ Gagal menghapus pesan.';
+      if (err.code === 50013) {
+        errorMsg += ' Bot tidak punya permission yang cukup.';
+      } else if (err.code === 50034) {
+        errorMsg += ' Tidak ada pesan yang bisa dihapus (mungkin semua pesan lebih dari 14 hari).';
+      } else {
+        errorMsg += ` Error: ${err.message}`;
+      }
+
+      await interaction.editReply(errorMsg);
     }
   },
 };
