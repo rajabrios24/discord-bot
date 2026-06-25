@@ -26,16 +26,14 @@ module.exports = {
       return interaction.reply({ content: '❌ Kamu tidak punya permission **Manage Messages**.', ephemeral: true });
     }
 
-    await interaction.deferReply();
+    // Reply dulu sebelum hapus pesan (ephemeral supaya tidak ikut terhapus)
+    await interaction.reply({ content: '🗑️ Menghapus pesan...', ephemeral: true });
 
     try {
       // Parameter ke-2 (true) = filterOld, hanya hapus pesan < 14 hari
       const deleted = await interaction.channel.bulkDelete(amount, true);
 
-      const reply = await interaction.editReply(`🗑️ Berhasil menghapus **${deleted.size}** pesan.`);
-
-      // Hapus pesan konfirmasi setelah 5 detik
-      setTimeout(() => reply.delete().catch(() => {}), 5000);
+      await interaction.editReply(`✅ Berhasil menghapus **${deleted.size}** pesan.`);
     } catch (err) {
       console.error('[CLEAR] Error:', err);
 
