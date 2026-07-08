@@ -19,17 +19,26 @@ client.musicPlayer = new MusicPlayer();
 
 // Load commands
 const commandsPath = path.join(__dirname, 'commands');
-const commandFolders = fs.readdirSync(commandsPath);
+const commandFilesAndFolders = fs.readdirSync(commandsPath);
 
-for (const folder of commandFolders) {
-  const folderPath = path.join(commandsPath, folder);
-  const commandFiles = fs.readdirSync(folderPath).filter(file => file.endsWith('.js'));
+for (const item of commandFilesAndFolders) {
+    const itemPath = path.join(commandsPath, item);
+    const stat = fs.statSync(itemPath);
 
-  for (const file of commandFiles) {
-    const filePath = path.join(folderPath, file);
-    const command = require(filePath);
-    client.commands.set(command.data.name, command);
-  }
+    // If the item is a directory (e.g., 'music'), read its contents
+    if (stat.isDirectory()) {
+        const commandFiles = fs.readdirSync(itemPath).filter(file => file.endsWith('.js'));
+        for (const file of commandFiles) {
+            const filePath = path.join(itemPath, file);
+            const command = require(filePath);
+            client.commands.set(command.data.name, command);
+        }
+    }
+    // If the item is a file (e.g., 'clear.js'), load it directly
+    else if (stat.isFile() && item.endsWith('.js')) {
+        const command = require(itemPath);
+        client.commands.set(command.data.name, command);
+    }
 }
 
 // Load events
