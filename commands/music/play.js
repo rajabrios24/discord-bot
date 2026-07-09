@@ -1,6 +1,7 @@
 const { SlashCommandBuilder } = require('discord.js');
+const { EmbedBuilder } = require('discord.js');
 const { play } = require('play-dl');
-const MusicPlayer = require('../../utils/musicPlayer');
+const { Song } = require('../../utils/musicPlayer');
 
 module.exports = {
   data: new SlashCommandBuilder()
@@ -16,43 +17,100 @@ module.exports = {
     const voiceChannel = interaction.member.voice.channel;
 
     if (!voiceChannel) {
-      return interaction.reply('Anda harus berada di voice channel untuk menggunakan perintah ini!');
+      return interaction.reply({
+        content: '❌ Kamu harus berada di voice channel untuk menggunakan perintah ini!',
+        ephemeral: true,
+      });
     }
 
-    const musicPlayer = interaction.client.musicPlayer || new MusicPlayer();
-    interaction.client.musicPlayer = musicPlayer;
-
+    const musicPlayer = interaction.client.musicPlayer;
     await interaction.deferReply();
 
     try {
-      let song;
-      if (play.is_url(query)) {
-        const info = await play.video_basic_info(query);
-        song = {
-          title: info.video_details.title,
-          url: query,
-          duration: info.video_details.durationRaw,
-          thumbnail: info.video_details.thumbnails[0].url,
-        };
-      } else {
-        const results = await play.search(query, { limit: 1 });
-        song = {
-          title: results[0].title,
-          url: results[0].url,
-          duration: results[0].durationRaw,
-          thumbnail: results[0].thumbnails[0],
-        };
+      // Cek apakah URL YouTube playlist
+      if (play.is_url(query) && play.yt_validate(query) === 'playlist') {
+        const playlistInfo = await play.playlist_info(query, { incomplete: true });
+        const playlistSongs = playlistInfo.videos;
+
+        for (const video of playlistSongs) {
+          const song = new Song({
+            title: video.title,
+            url: video.url,
+            duration: video.durationRaw || '0:00',
+            thumbnail: video.thumbnails[0]?.url || null,
+            requestedBy: interaction.user.tag,
+          });
+          musicPlayer.addToQueue(interaction.guildId, song);
+        }
+
+        const queue = musicPlayer.getQueue(interaction.guildId);
+        if (!queue.currentSong) {
+          const firstSong = queue.songs.shift();
+          await musicPlayer.playSong(interaction.guildId, voiceChannel, firstSong);
+        }
+
+        return interaction.editReply({
+          content: `🎵 **Playlist dimasukkan ke antrian!** (${playlistSongs.length} lagu)`,
+        });
       }
 
-      if (!musicPlayer.currentSong) {
-        await musicPlayer.play(interaction.guild, voiceChannel, song);
-        await interaction.editReply(`🎶 **Sedang diputar:** ${song.title}`);
+      // Play single song
+      let songData;
+      if (play.is_url(query)) {
+        const info = await play.video_basic_info(query);
+        songData = info.video_details;
       } else {
-        musicPlayer.addToQueue(song);
-        await interaction.editReply(`➕ **Ditambahkan ke antrian:** ${song.title}`);
+        const results = await play.search(query, { limit: 1 });
+        if (results.length === 0) {
+          return interaction.editReply('❌ Tidak ditemukan lagu dengan pencarian tersebut.');
+        }
+        songData = results[0];
+      }
+
+      const song = new Song({
+        title: songData.title,
+        url: songData.url,
+        duration: songData.durationRaw || '0:00',
+        thumbnail: songData.thumbnails[0]?.url || null,
+        requestedBy: interaction.user.tag,
+      });
+
+      const queue = musicPlayer.getQueue(interaction.guildId);
+
+      if (!queue.currentSong) {
+        await musicPlayer.playSong(interaction.guildId, voiceChannel, song);
+
+        const embed = new EmbedBuilder()
+          .setTitle('🎶 Sedang Diputar')
+          .setDescription(`**[${song.title}](${song.url})**`)
+          .addFields(
+            { name: '⏱ Durasi', value: song.duration, inline: true },
+            { name: '👤 Request', value: song.requestedBy, inline: true },
+          )
+          .setThumbnail(song.thumbnail)
+          .setColor('#2ecc71')
+          .setTimestamp();
+
+        await interaction.editReply({ embeds: [embed] });
+      } else {
+        const pos = musicPlayer.addToQueue(interaction.guildId, song);
+
+        const embed = new EmbedBuilder()
+          .setTitle('➕ Ditambahkan ke Antrian')
+          .setDescription(`**[${song.title}](${song.url})**`)
+          .addFields(
+            { name: '⏱ Durasi', value: song.duration, inline: true },
+            { name: '📍 Posisi', value: `#${pos}`, inline: true },
+            { name: '👤 Request', value: song.requestedBy, inline: true },
+          )
+          .setThumbnail(song.thumbnail)
+          .setColor('#3498db')
+          .setTimestamp();
+
+        await interaction.editReply({ embeds: [embed] });
       }
     } catch (error) {
-      console.error(error);
+      console.error('Play command error:', error);
       await interaction.editReply('❌ Terjadi kesalahan saat memutar lagu.');
     }
   },

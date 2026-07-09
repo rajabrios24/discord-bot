@@ -4,7 +4,13 @@ const fs = require('fs');
 const path = require('path');
 
 const clientId = process.env.CLIENT_ID;
+const guildId = process.env.GUILD_ID;
 const token = process.env.DISCORD_TOKEN;
+
+if (!clientId || !guildId || !token) {
+  console.error('❌ Missing CLIENT_ID, GUILD_ID, or DISCORD_TOKEN in .env');
+  process.exit(1);
+}
 
 const commands = [];
 const commandsPath = path.join(__dirname, 'commands');
@@ -36,10 +42,17 @@ const rest = new REST({ version: '10' }).setToken(token);
 
 (async () => {
     try {
-        console.log('Started refreshing application (/) commands.');
-        await rest.put(Routes.applicationCommands(clientId), { body: commands });
-        console.log('Successfully reloaded application (/) commands.');
+        console.log(`Started refreshing ${commands.length} application (/) commands for guild ${guildId}.`);
+        console.log('Commands:', commands.map(c => c.name).join(', '));
+
+        // Use guild-level registration for instant updates
+        const data = await rest.put(
+            Routes.applicationGuildCommands(clientId, guildId),
+            { body: commands }
+        );
+
+        console.log(`✅ Successfully reloaded ${data.length} application (/) commands.`);
     } catch (error) {
-        console.error(error);
+        console.error('❌ Error deploying commands:', error);
     }
 })();

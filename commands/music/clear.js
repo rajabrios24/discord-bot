@@ -2,8 +2,8 @@ const { SlashCommandBuilder } = require('discord.js');
 
 module.exports = {
   data: new SlashCommandBuilder()
-    .setName('shuffle')
-    .setDescription('Mengacak antrian lagu'),
+    .setName('clearqueue')
+    .setDescription('Menghapus semua lagu dari antrian'),
 
   async execute(interaction) {
     const musicPlayer = interaction.client.musicPlayer;
@@ -11,12 +11,13 @@ module.exports = {
 
     if (queue.songs.length === 0) {
       return interaction.reply({
-        content: '❌ Antrian kosong! Tidak ada lagu untuk diacak.',
+        content: '❌ Antrian sudah kosong!',
         ephemeral: true,
       });
     }
 
-    const enabled = musicPlayer.toggleShuffle(interaction.guildId);
-    await interaction.reply(enabled ? '🔀 **Shuffle diaktifkan!** Antrian lagu diacak.' : '🔀 **Shuffle dimatikan!** Antrian lagu dikembalikan.');
+    const count = queue.songs.length;
+    musicPlayer.clearQueue(interaction.guildId);
+    await interaction.reply(`🗑️ **${count} lagu dihapus dari antrian!**`);
   },
 };

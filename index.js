@@ -2,7 +2,7 @@ require('dotenv').config();
 const { Client, Collection, GatewayIntentBits } = require('discord.js');
 const fs = require('fs');
 const path = require('path');
-const MusicPlayer = require('./utils/musicPlayer');
+const { MusicPlayer } = require('./utils/musicPlayer');
 
 const client = new Client({
   intents: [

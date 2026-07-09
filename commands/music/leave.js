@@ -2,8 +2,8 @@ const { SlashCommandBuilder } = require('discord.js');
 
 module.exports = {
   data: new SlashCommandBuilder()
-    .setName('stop')
-    .setDescription('Menghentikan pemutaran dan membersihkan antrian'),
+    .setName('leave')
+    .setDescription('Bot meninggalkan voice channel'),
 
   async execute(interaction) {
     const musicPlayer = interaction.client.musicPlayer;
@@ -11,12 +11,12 @@ module.exports = {
 
     if (!queue.currentSong && queue.songs.length === 0) {
       return interaction.reply({
-        content: '❌ Tidak ada lagu yang sedang diputar!',
+        content: '❌ Bot tidak sedang berada di voice channel!',
         ephemeral: true,
       });
     }
 
-    musicPlayer.stop(interaction.guildId);
-    await interaction.reply('⏹️ **Pemutaran dihentikan dan antrian dibersihkan!**');
+    musicPlayer.leave(interaction.guildId);
+    await interaction.reply('👋 **Bot meninggalkan voice channel!**');
   },
 };
